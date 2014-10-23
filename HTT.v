@@ -633,14 +633,13 @@ Program Definition swap (x y : ptr) :
 
 Next Obligation.
 apply: ghR. 
-move=> i [a b]/= -> vi.
+move=> i [A B]/= -> vi.
 heval.
 
 Restart.
 
 apply: ghR=> i; case=> A B /= =>-> => Hh.
-apply: bnd_readR=> /=.
-apply: bnd_readR=> /=.
+do 2! (apply: bnd_readR=> /=).
 apply: bnd_writeR=> /=.
 rewrite joinC.
 apply: val_write => H /=.
@@ -800,8 +799,17 @@ library will be useful for establishing equalities between lists.
 *)
 
 Next Obligation.
-(* fill in your proof here instead of [admit] *)
-admit.
+apply: ghR=> i [a b] H1 H2 /=.
+case X: (p0 == null).
+apply: val_ret=> _ /=.
+simpl in H1.
+move: (@lseq_null T a).
+
+Locate "_ # _".
+Print star.
+Locate "_ \In _".
+
+
 Qed.
 
 Next Obligation.
