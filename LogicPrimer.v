@@ -193,9 +193,9 @@ move=> A B C.
    (A -> B) -> (B -> C) -> A -> C
 ]]
 *)
-
+(*
 move=> H1 H2 a.
-
+*)
 (**
 [[
   H1 : A -> B
@@ -210,7 +210,7 @@ recall the functional programming and get the result of type [C] just
 by two subsequent applications of [H1] and [H2] to the value [a] of type [A]:
 
 *)
-
+(*
 exact: (H2 (H1 a)).
 
 (**
@@ -222,7 +222,7 @@ tactics.
 *)
 
 Undo.
-
+*)
 (**
 The first use of [apply:] will replace the goal [C] by the goal [B],
 since this is what it takes to get [C] by using [H2]:
