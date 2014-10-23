@@ -111,7 +111,7 @@ move=>h1 [y Y][B][w]->{h1} _ /=.
 
 *)
 
-heval.
+by heval.
 
 (*
 Alternatively:
@@ -480,7 +480,7 @@ Lemma lseg_null xs q h :
          [/\ q = null, xs = [::] & h = Unit].
 Proof.
 case: xs=>[|x xs] D /= H; first by case: H=><- ->.
-case: H D=>r [h'][->] _. 
+case: H D =>r [h'][->] _. 
 (**
 [[
   ...
@@ -622,18 +622,30 @@ the proof will be more straightforward.
 
 *)
 
-Program Definition swap (x y : ptr):
-  {(a b : nat)},
-    STsep (fun h => h = x :-> a \+ y :-> b,
-           [vfun (res : unit) h => (h = x :-> b \+ y :-> a)]) :=
-  Do (t1 <-- read nat x;  
-      t2 <-- read nat y; 
-      x ::= t2;; 
+Program Definition swap (x y : ptr) :
+  {A B : nat},
+  STsep ([Pred h | h = x :-> A \+ y :-> B],
+         [vfun (_: unit) h => h = x :-> B \+ y :-> A]) :=
+  Do (t1 <-- read nat x ;
+      t2 <-- read nat y ;
+      x ::= t2 ;;
       y ::= t1).
+
 Next Obligation.
 apply: ghR. 
 move=> i [a b]/= -> vi.
 heval.
+
+Restart.
+
+apply: ghR=> i; case=> A B /= =>-> => Hh.
+apply: bnd_readR=> /=.
+apply: bnd_readR=> /=.
+apply: bnd_writeR=> /=.
+rewrite joinC.
+apply: val_write => H /=.
+by rewrite joinC.
+Qed.
 
 (**
 ---------------------------------------------------------------------
@@ -647,21 +659,6 @@ separation logic. You can alway displat the whole list of the
 available lemmas by running the command [Search _ (verify _ _ _)] and
 then refine the query for specific programs (e.g., [read] or [write]).
 *)
-
-Restart.
-
-apply: ghR. 
-move=> i [a b]/= -> vi.
-apply: bnd_seq=>//=.
-apply: val_read.
-move=> H.
-apply: bnd_seq=>//=.
-rewrite joinC.
-apply: val_read.
-
-Search _ (_ ;; _).
-
-Qed.
 
 (** 
 ---------------------------------------------------------------------

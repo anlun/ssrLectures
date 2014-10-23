@@ -977,41 +977,40 @@ Definition implies_to_or := forall P Q: Prop, (P -> Q) -> (~P \/ Q).
 
 Lemma peirce_dn: peirce -> double_neg.
 Proof.
-(* fill in your proof here instead of [admit] *)
-admit.
+rewrite /peirce /peirce_law /double_neg /not => H P HP.
+by move: (H P False)=> H'; apply: H'; move/HP.
 Qed.
 
 Lemma dn_em : double_neg -> excluded_middle.
 Proof.
-rewrite /excluded_middle.
-rewrite /double_neg.
-move=> H P.
-suff: ~ ~ (P \/ ~ P).
-- apply H.
-move=> H1.
-apply H1.
-
-admit.
+rewrite /excluded_middle /double_neg => H P.
+suff: ~ ~ (P \/ ~ P); first by apply H.
+move/ not_or_and.
+by case.
 Qed.
 
 Lemma em_dmnan: excluded_middle -> de_morgan_not_and_not.
 Proof.
-rewrite /excluded_middle.
-rewrite /de_morgan_not_and_not.
-move=> H P Q.
+rewrite /excluded_middle /de_morgan_not_and_not=> H P Q.
 case (H P); case (H Q); intuition.
 Qed.
 
 Lemma dmnan_ito : de_morgan_not_and_not -> implies_to_or.
 Proof.
-(* fill in your proof here instead of [admit] *)
-admit.
+rewrite /de_morgan_not_and_not /implies_to_or => H P Q H1.
+apply: (H); case => HP HQ.
+by apply: HP; move/H1.
 Qed.
+
+Lemma obvious : forall A, A -> A.
+Proof. done. Qed.
 
 Lemma ito_peirce : implies_to_or -> peirce.
 Proof.
-(* fill in your proof here instead of [admit] *)
-admit.
+rewrite /implies_to_or /peirce /peirce_law => H P Q H1.
+move: (H P P (@obvious P)) => HP.
+move: (H Q Q (@obvious Q)) => HQ.
+move: HP; case; move: HQ; case => //= => HQ HP; apply: H1 => //.
 Qed.
 
 (**

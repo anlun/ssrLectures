@@ -832,8 +832,9 @@ Prove the following lemma about [minm] and [maxn]:
 
 Lemma addn_min_max m n : minn m n + maxn m n = m + n.
 Proof.
-(* fill in your proof here instead of [admit] *)
-admit.
+rewrite /minn /maxn.
+case (m < n) => //.
+apply: addnC.
 Qed.
 
 End Rewriting.
