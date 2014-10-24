@@ -767,6 +767,16 @@ type [revT].
 Definition revT T : Type := 
   forall p, {ps}, STsep (@shape_rev T p ps, [vfun y => lseq y (rev ps.1 ++ ps.2)]).
 
+Theorem natEq (x y : nat): (x == y) -> x = y.
+Proof.
+move: y.
+elim x; first case =>//.
+move=> n H.
+case=>// => y'.
+rewrite eqSS => H'.
+by apply: eq_S; apply: H.
+Qed.
+
 Program Definition 
 reverse T p : {xs}, STsep (@lseq T p xs, [vfun y => lseq y (rev xs)]) :=
   Do (let: reverse := Fix (fun (reverse : revT T) p => 
@@ -799,16 +809,89 @@ library will be useful for establishing equalities between lists.
 *)
 
 Next Obligation.
-apply: ghR=> i [a b] H1 H2 /=.
-case X: (p0 == null).
-apply: val_ret=> _ /=.
-simpl in H1.
-move: (@lseq_null T a).
+apply: ghR=> i [a b] H1 /=.
+case X: (p0 == null); move: X H1; case p0 => n; rewrite /null;
+  rewrite /eq_op /=; [move/natEq=>-> | move=> H1];
+  case=> h1; case=> h2; case=>->.
+- case=> H4 H5 H3.
+  move: (@lseq_null T a h1 (validL H3) H4).
+  case=>->=>-> /=.
+  rewrite unitL.
+  by apply: val_ret.
+case=> H3 H4 H5.
+suff X: (ptr_nat n != null);
+  last by move: H1; case n.
+move: (@lseq_pos T a (ptr_nat n) h1 X H3).
+case=> ah; case=> p'; case=> h'; case=> H6 H7 H8.
+rewrite -H7.
+rewrite H6 rev_cons cat_rcons.
+apply: bnd_readR=> /=.
+apply: bnd_writeR=> /=.
+move: a H6 H3 H8; case=> [|ah' al] //=.
+case=>->; clear ah'.
+move=> H3 H8.
+apply: gh_ex.
+apply: val_doR.
+- move=> vH.
+  rewrite /shape_rev /=.
+  Search _ (_ \+ _).
 
-Locate "_ # _".
-Print star.
-Locate "_ \In _".
+  Search _ (_ \In _).
+  Locate "_ \In _".
+ 
+move: b n H1 p1 h1 h2.
+elim a => [| ah al H] => b n H1 p1 h1 h2; case=> H4 H5 H3 /=;
+  first by move: H4 H1; case; case=>->.
+suff X: (ptr_nat n != null);
+  last by move: H1; case n.
+move: (@lseq_pos T (ah :: al) (ptr_nat n) h1 X H4).
+case=> x; case=> p2; case=> h.
+case=> /=.
+case=> L; rewrite -L; clear L.
+move=> H6 H7; rewrite -H6.
+rewrite rev_cons cat_rcons.
+rewrite [_ h] joinC.
+rewrite joinA.
+rewrite [_ h] joinC.
+do 2! rewrite -joinA.
+apply: bnd_readR=> /=.
+apply: bnd_writeR=> /=.
+move: p2 H6 H7.
+case=> n' => H6 H7.
+Search "gh_ex".
+Locate "Do _".
+Print do'.
 
+apply: gh_ex.
+Search "val_do".
+apply: val_doR.
+
+Search "gh_ex".
+
+(* move: (@H (ah :: b) n H1 p1 h). *)
+
+apply: (@H (ah :: b) n H1 p1 h).
+- split.
+  move: p2 H6 H7.
+  
+apply: (@H (ah :: b) n H1 p1 h).
+move=>->.
+
+
+apply: bnd_readR=> /=.
+apply: bnd_writeR=> /=.
+move: p2 H6 H7.
+case=> n' => H6 H7.
+
+
+move: (fun H' => @H (ah :: b) n H' (ptr_nat n) h 
+                    (ptr_nat n :-> ah \+ ((ptr_nat n.+1) :-> ptr_nat n') \+ h2)).
+
+
+Search _ (?X \+ ?Y = ?Y \+ ?X).
+Search "joinA".
+ 
+Search "lseq_pos".
 
 Qed.
 

@@ -786,7 +786,7 @@ using the [nat2_ind] induction principle. Then prove it using
 
 Lemma div2_le n: div2 n <= n.
 Proof.
-elim: n; try done.
+elim: n; first by [].
 move=> n.
 
 
@@ -816,10 +816,9 @@ move: m.
 elim.
 - by move=>_; constructor.
 move=> m H1 H2.
-have X: (beautiful (n + m * n)).
-- apply: (b_sum (n + m *n) n (m * n)); try done.
-  by apply H1.
-apply: X.
+have X: (beautiful (n + m * n)); last apply: X.
+apply: (b_sum (n + m *n) n (m * n)); try done.
+by apply H1.
 Qed.
 
 
@@ -875,8 +874,8 @@ elim GN; move=> n'.
   by rewrite addnC. done.
 move=> m' GM' GM'M =>->.
 rewrite addnC addnA.
-apply: (g_plus5 (m + m' + 5) (m + m')).
-by rewrite addnC. done.
+apply: (g_plus5 (m + m' + 5) (m + m')); last done.
+by rewrite addnC.
 Qed.
 
 Lemma beautiful_gorgeous (n: nat) : beautiful n -> gorgeous n.
@@ -884,11 +883,11 @@ Proof.
 elim; move=> n'.
 - by move=> H; rewrite H; constructor.
 - move=> H; rewrite H.
-  apply: (g_plus3 3 0).
-  by constructor. done.
+  apply: (g_plus3 3 0); last done.
+  by constructor.
 - move=> H; rewrite H.
-  apply: (g_plus5 5 0).
-  by constructor. done.
+  apply: (g_plus5 5 0); last done.
+  by constructor.
 move=> p m BP GP BM GM=>-> {n'}.
 by apply: g_sum.
 Qed.
@@ -897,10 +896,9 @@ Qed.
 Lemma g_times2 (n: nat): gorgeous n -> gorgeous (n * 2).
 Proof.
 move=> H. 
-Search _ (commutative _).
 suff: n * 2 = n + n.
-move=>->.
-by apply: (g_sum n n).
+- move=>->.
+  by apply: (g_sum n n).
 rewrite muln2.
 by rewrite addnn.
 Qed.
@@ -910,13 +908,11 @@ Proof.
 elim; move=> n'.
 - by move=>->; constructor.
 - move=> m GM BM =>->.
-  apply: (b_sum (m + 3) m 3 BM).
+  apply: (b_sum (m + 3) m 3 BM); last done.
   by move: (b_3 3 Logic.eq_refl).
-  done.
-- move=> m GM BM =>->.
-  apply: (b_sum (m + 5) m 5 BM).
-  by move: (b_5 5 Logic.eq_refl).
-  done.
+move=> m GM BM =>->.
+apply: (b_sum (m + 5) m 5 BM); last done.
+by move: (b_5 5 Logic.eq_refl).
 Qed.
 
 
@@ -971,8 +967,7 @@ n-ary disjunction, which is satisfied if its i-th disjunct is true.
 Lemma repr3 n : n >= 8 -> 
   exists k, [\/ n = 3 * k + 8, n = 3 * k + 9 | n = 3 * k + 10].
 Proof.
-elim n.
-- done.
+elim n; first done.
 move=> m H'.
 rewrite leq_eqVlt.
 move /Bool.orb_prop; case.
@@ -1004,7 +999,6 @@ suff: 3 * m.+1 = 3 + 3 * m.
     by constructor.
   done.
   done.
-Search _ (_ * _.+1).
 by rewrite mulnS.
 Qed.
 
@@ -1343,15 +1337,11 @@ Lemma allP T P test:
   forall ls, reflect (all P ls) (allb test ls).
 Proof.
 move=> H ls.
-elim ls=>//=.
-- by constructor.
+elim ls=>//=; first by constructor.
 move=> a l H1.
 move: (H a).
-case=>/=.
-- move=> H2.
-  case: H1=>//H3; constructor=>//; case => _.
-  done.
-move=> H2.
+case=>/= => H2.
+- by case: H1=>//H3; constructor=>//; case => _.
 constructor; case.
 by move=> H3.
 Qed.

@@ -1002,14 +1002,11 @@ apply: (H); case => HP HQ.
 by apply: HP; move/H1.
 Qed.
 
-Lemma obvious : forall A, A -> A.
-Proof. done. Qed.
-
 Lemma ito_peirce : implies_to_or -> peirce.
 Proof.
 rewrite /implies_to_or /peirce /peirce_law => H P Q H1.
-move: (H P P (@obvious P)) => HP.
-move: (H Q Q (@obvious Q)) => HQ.
+move: (H P P (@id P)) => HP.
+move: (H Q Q (@id Q)) => HQ.
 move: HP; case; move: HQ; case => //= => HQ HP; apply: H1 => //.
 Qed.
 
