@@ -704,6 +704,103 @@ the "main" function.
 
 *)
 
+Theorem natEq (x y : nat): (x == y) -> x = y.
+Proof.
+move: y.
+elim x; first case =>//.
+move=> n H.
+case=>// => y'.
+rewrite eqSS => H'.
+by apply: eq_S; apply: H.
+Qed.
+
+Fixpoint fib_pure (n : nat) :=
+  if n is n'.+1
+  then if n' is m.+1
+       then fib_pure n' + fib_pure m
+       else 1
+  else 0.
+
+
+Fixpoint fib_pure_base (n : nat) :=
+  match n with
+  | 0    => (0, 1)
+  | m.+1 => match fib_pure_base m with
+            | (a, b) => (b, a + b)
+            end
+  end.
+Definition fib_pure_eff (n : nat) := fst (fib_pure_base n).
+
+(* Imperative description *)
+
+Definition fib_inv (n x y : ptr) h : Prop :=
+  exists n',
+  h = n :-> n'.+1 \+ x :-> fib_pure n' \+ y :-> fib_pure n'.+1.
+
+Definition fib_loop_tp (n x y : ptr) (N : nat):=
+  unit ->
+  STsep (fib_inv n x y,
+         [vfun res h => fib_inv n x y h /\ res = fib_pure N]).
+
+Program Definition fib_loop (n x y : ptr) (N : nat) : fib_loop_tp n x y N := 
+  Fix (fun (loop : fib_loop_tp n x y N) (_ : unit) => 
+       Do(
+          n' <-- !n;
+          y' <-- !y;
+          if n' == N then ret y'
+          else tmp <-- !x;
+               x ::= y';;
+               x' <-- !x;
+               y ::= x' + tmp;;
+               n ::= n' + 1;;
+               loop tt)).
+Next Obligation.
+move=> h /=; case=> n1 =>->.
+do 2! apply: bnd_readR => /=.
+case X: (n1.+1 == N) => //.
+- case X1: n1 => [|n1'];
+    apply: val_ret => H1 H2 /=; split => //;
+    move: (natEq X)=><-;
+    rewrite X1 => //.
+
+   
+  
+Definition fib_tp (N : nat) :=
+  STsep ([Pred h | h = Unit], [vfun (res : nat) h => h = Unit /\ res = fib_pure N]).
+
+Program Definition fib (N : nat) : fib_tp N :=
+  Do(
+      if N == 0 then ret 0
+       else if N == 1 then ret 1
+       else n <-- alloc 2;
+            x <-- alloc 1;
+            y <-- alloc 1;
+            res <--
+              (fix loop (_ : unit). 
+                 n' <-- !n;
+                 y' <-- !y;
+                 if n' == N then ret y'
+                 else tmp <-- !x;
+                      x ::= y';;
+                      x' <-- !x;
+                      y ::= x' + tmp;;
+                      n ::= n' + 1;;
+                      loop(tt))(tt).
+            dealloc n;;
+            dealloc x;;
+            dealloc y;;
+            ret res).
+
+Program Definition fact_acc (n acc : ptr): fact_tp n acc := 
+  Fix (fun (loop : fact_tp n acc) (_ : unit) => 
+    Do (a1 <-- !acc;
+        n' <-- !n;
+        if n' == 0 then ret a1
+        else acc ::= a1 * n';;
+             n ::= n' - 1;;
+             loop tt)).
+
+
 (** 
 ---------------------------------------------------------------------
 Exercise [Value-returning list beheading]
@@ -766,16 +863,6 @@ type [revT].
 
 Definition revT T : Type := 
   forall p, {ps}, STsep (@shape_rev T p ps, [vfun y => lseq y (rev ps.1 ++ ps.2)]).
-
-Theorem natEq (x y : nat): (x == y) -> x = y.
-Proof.
-move: y.
-elim x; first case =>//.
-move=> n H.
-case=>// => y'.
-rewrite eqSS => H'.
-by apply: eq_S; apply: H.
-Qed.
 
 Program Definition 
 reverse T p : {xs}, STsep (@lseq T p xs, [vfun y => lseq y (rev xs)]) :=
