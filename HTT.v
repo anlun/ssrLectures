@@ -704,16 +704,6 @@ the "main" function.
 
 *)
 
-Theorem natEq (x y : nat): (x == y) -> x = y.
-Proof.
-move: y.
-elim x; first case =>//.
-move=> n H.
-case=>// => y'.
-rewrite eqSS => H'.
-by apply: eq_S; apply: H.
-Qed.
-
 Fixpoint fib_pure (n : nat) :=
   if n is n'.+1
   then if n' is m.+1
@@ -756,15 +746,15 @@ Program Definition fib_loop (n x y : ptr) (N : nat) : fib_loop_tp n x y N :=
                loop tt)).
 Next Obligation.
 move=> h /=; case=> n1 =>->.
-do 2! apply: bnd_readR => /=.
-case X: (n1.+1 == N) => //.
-- case X1: n1 => [|n1'];
-    apply: val_ret => H1 H2 /=; split => //;
-    move: (natEq X)=><-;
-    rewrite X1 => //.
+heval; case X: (n1.+1 == N)=>//.
+- by apply: val_ret=>_; move/eqP: X=><-/=.
+heval; apply: val_doR=>//.
+move=>_.
+exists (n1.+1).
+rewrite addn1.
+rewrite /fib_pure => //=.
+Qed.
 
-   
-  
 Definition fib_tp (N : nat) :=
   STsep ([Pred h | h = Unit], [vfun (res : nat) h => h = Unit /\ res = fib_pure N]).
 
@@ -775,31 +765,24 @@ Program Definition fib (N : nat) : fib_tp N :=
        else n <-- alloc 2;
             x <-- alloc 1;
             y <-- alloc 1;
-            res <--
-              (fix loop (_ : unit). 
-                 n' <-- !n;
-                 y' <-- !y;
-                 if n' == N then ret y'
-                 else tmp <-- !x;
-                      x ::= y';;
-                      x' <-- !x;
-                      y ::= x' + tmp;;
-                      n ::= n' + 1;;
-                      loop(tt))(tt).
+            res <-- fib_loop n x y N tt;
             dealloc n;;
             dealloc x;;
             dealloc y;;
             ret res).
-
-Program Definition fact_acc (n acc : ptr): fact_tp n acc := 
-  Fix (fun (loop : fact_tp n acc) (_ : unit) => 
-    Do (a1 <-- !acc;
-        n' <-- !n;
-        if n' == 0 then ret a1
-        else acc ::= a1 * n';;
-             n ::= n' - 1;;
-             loop tt)).
-
+Next Obligation.
+case N => [| N1] /=; move=> h =>-> /=.
+- by apply: val_ret => /=; split.
+case N1 => [| N2] /=.
+- by apply: val_ret => /=; split.
+heval=>n; heval=>x; heval=>y; rewrite unitR joinC [x:->_ \+ _]joinC.
+apply: bnd_seq=>/=; clear.
+apply: val_doR; last first=>//[res h|].
+- case; case=> n1->-> H.
+  heval=> _ _; split => //.
+  by rewrite !unitR.
+by exists 1.
+Qed.
 
 (** 
 ---------------------------------------------------------------------
@@ -812,6 +795,25 @@ removal, in addition to the "next" pointer. Use Coq's [option] type to
 account for the possibility of an empty list in the result.
 
 *)
+
+Program Definition remove_val T p : {l},
+  STsep (@lseq T p l,
+         [vfun y h =>
+          lseq y.1 (behead l) h /\
+          y.2 = if l is hl :: tl then Some hl else None]) :=
+  Do (if p == null then ret (p, None)
+      else val  <-- !p;
+           next <-- !(p .+ 1);
+           dealloc p;;
+           dealloc p .+ 1;;
+          ret (next, Some val)).
+Next Obligation.
+apply: ghR=> h l H1 H2.
+case: ifP H1=> H3.
+- move: (eqP H3)=>->; case /(lseq_null H2)=>->->; heval.
+case/(lseq_pos (negbT H3))=> x [q][h'][->] <- /= H4.
+by heval; rewrite 2!unitL.
+Qed.
 
 (** 
 ---------------------------------------------------------------------
@@ -839,6 +841,36 @@ Hint: A boolean lemma [negbT] can be useful to switch between
 different representations of inequality.
 
 *)
+
+Definition mapTS T S (f : T -> S) : Type := 
+  forall p, {xs}, STsep (@lseq T p xs, 
+                         [vfun (_ : unit) h => lseq p (map f xs) h]).
+
+Program Definition map_ex T S (f : T -> S) p : {l},
+   STsep (lseq p l,
+          [vfun (_: unit) h => lseq p (map f l) h]) :=
+   Fix (fun (loop : mapTS f) (p : ptr) =>
+     Do (if p == null then ret tt
+         else val  <-- !p;
+              p ::= f val;;
+              next <-- !p .+ 1;
+              loop next)) p.
+Next Obligation.
+apply: ghR=>h xs H V. 
+case X: (p0 == null).
+- apply: val_ret=>_ /=.
+  move/eqP: X H=>-> /=.
+  case/(lseq_null V)=>->-> //=.
+case/negbT /lseq_pos /(_ H): X=>x[next][h'][Z1] Z2 H1; subst h.
+heval.
+move/validR: V=> V1; apply: (gh_ex (behead xs)).
+rewrite [_ \+ h']joinC joinC -joinA; apply: val_do=>//=.
+move=> _ h1 H2 H3.
+rewrite Z1 /lseq /lseg /=.
+exists next, h1.
+split; last apply: H2.
+by rewrite joinC joinA [p0 .+ 1 :-> next \+ _] joinC.
+Qed.
 
 (**
 ---------------------------------------------------------------------
@@ -898,7 +930,7 @@ library will be useful for establishing equalities between lists.
 Next Obligation.
 apply: ghR=> i [a b] H1 /=.
 case X: (p0 == null); move: X H1; case p0 => n; rewrite /null;
-  rewrite /eq_op /=; [move/natEq=>-> | move=> H1];
+  rewrite /eq_op /=; [move/eqP=>-> | move=> H1];
   case=> h1; case=> h2; case=>->.
 - case=> H4 H5 H3.
   move: (@lseq_null T a h1 (validL H3) H4).
